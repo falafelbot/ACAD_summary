@@ -169,6 +169,14 @@ histo_function <- function(df = acad,
 
 
 all <- histo_function()
+png("primary_breeding_habitat_ccsmax_summary.png",
+    width = 15,
+    height = 30,
+    units = "cm",
+    res = 300)
+print(all)
+dev.off()
+
 sub <- histo_function(sub_grp = "primary_breeding_habitat_sub")
 
 pdf("figures/primary_breeding_habitat_summary.pdf",
