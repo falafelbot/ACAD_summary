@@ -252,26 +252,32 @@ print(all)
 dev.off()
 
 sub <- histo_function(sub_grp = "primary_breeding_habitat_sub")
+all2 <- histo_function(grp = "primary_nonbreeding_habitat_major")
 
-pdf("figures/primary_breeding_habitat_summary.pdf",
+sub2 <- histo_function(grp = "primary_nonbreeding_habitat_major",
+                      sub_grp = "primary_nonbreeding_habitat_sub")
+
+all3 <- histo_function(grp = "group")
+
+
+pdf("figures/Summary_of_large_groups.pdf",
     width = 8.5,
     height = 11)
 
 print(all)
-print(sub)
+print(sub[["Forests"]])
+print(all2)
+print(sub2[["Forests"]])
+print(all3)
 dev.off()
 
 
-
-all <- histo_function(grp = "primary_nonbreeding_habitat_major")
-sub <- histo_function(grp = "primary_nonbreeding_habitat_major",
-                      sub_grp = "primary_nonbreeding_habitat_sub")
 
 pdf("figures/primary_nonbreeding_habitat_summary.pdf",
     width = 8.5,
     height = 11)
 
-print(all)
+print(all2)
 print(sub)
 dev.off()
 
