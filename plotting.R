@@ -92,7 +92,8 @@ colset2 <- rev(brewer.pal(11,"RdYlBu"))[c(4,6,7,8,10,11)]
 names(colset2) <- col_names
 
 ft_mean <- function(x,thresh = 13){
-  return(length(which(as.integer(x)> thresh))/length(x))
+  #return(length(which(as.integer(x)> thresh))/length(x))
+  return(mean(as.integer(x)))
 }
 
 
