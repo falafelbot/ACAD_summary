@@ -7,7 +7,9 @@ library(readxl)
 library(colorscience)
 library(RColorBrewer)
 library(ggstats)
-
+library(scico)
+# install.packages("devtools")
+# devtools::install_github("thomasp85/scico")
 # ACAD globals ------------------------------------------------------------
 # x <- "aa%.( /#) -bb"
 name_rep <- function(x){
@@ -82,14 +84,22 @@ acad <- acad %>%
 #               blue = pmin(255,rgbmat[,"B"]),
 #               maxColorValue = 255)
 
-# comparable palette from color brewer
-colset2 <- rev(brewer.pal(11,"RdYlBu"))[c(1:5,6,7,7,8,8,9,10,10,11,11,11,11)]
-names(colset2) <- as.character(4:20)
-
-
+# comparable palette from scico
+ 
+# colset2 <- scico(11, palette = 'romaO')[c(1:5,6,7,7,8,8,9,10,10,11,11,11,11)]
+# names(colset2) <- as.character(4:20)
 col_names <- levels(acad$continental_importance)
-colset2 <- rev(brewer.pal(11,"RdYlBu"))[c(4,6,7,8,10,11)]
+colset2 <- rev(scico(16, palette = 'romaO'))[c(4,8,10,11,13,16)]
 names(colset2) <- col_names
+
+# # comparable palette from color brewer
+# colset2 <- rev(brewer.pal(11,"RdYlBu"))[c(1:5,6,7,7,8,8,9,10,10,11,11,11,11)]
+# names(colset2) <- as.character(4:20)
+# 
+# 
+# col_names <- levels(acad$continental_importance)
+# colset2 <- rev(brewer.pal(11,"RdYlBu"))[c(4,6,7,8,10,11)]
+# names(colset2) <- col_names
 
 ft_mean <- function(x,thresh = 13){
   #return(length(which(as.integer(x)> thresh))/length(x))
@@ -281,8 +291,11 @@ print(all2)
 print(sub)
 dev.off()
 
-# data selection ----------------------------------------------------------
+# ACAD vs IUCN ----------------------------------------------------------
 
+
+# plotting the % of species listed on watchlist vs IUCN
+#
 
 
 
