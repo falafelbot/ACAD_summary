@@ -60,7 +60,12 @@ acad <- acad1 %>%
                                     "Orange Watch List/Tipping-Point",
                                     "Red Watch List/Tipping-Point"),
                          ordered = TRUE),
-         continental_importance = status
+         continental_importance = status,
+         group = factor(group,levels = c("landbird","shorebird",
+                                         "waterfowl","waterbird"),
+                        labels = c("Landbirds","Shorebirds",
+                                   "Waterfowl","Waterbirds"),
+                        ordered = TRUE)
          
   )
 
@@ -88,8 +93,11 @@ acad <- acad %>%
  
 # colset2 <- scico(11, palette = 'romaO')[c(1:5,6,7,7,8,8,9,10,10,11,11,11,11)]
 # names(colset2) <- as.character(4:20)
-col_names <- levels(acad$continental_importance)
-colset2 <- rev(scico(16, palette = 'romaO'))[c(4,8,10,11,13,16)]
+# col_names <- levels(acad$continental_importance)
+# colset2 <- rev(scico(16, palette = 'romaO'))[c(4,8,10,11,13,15)]
+# names(colset2) <- col_names
+
+colset2 <- rev(scico(10, palette = 'romaO'))[c(3,5,6,7,8,9)]
 names(colset2) <- col_names
 
 # # comparable palette from color brewer
@@ -337,7 +345,6 @@ wlrl_data <- watch_red %>%
          Region = factor(region,levels = c("c_america","mexico","usa_canada"),
                          labels = c("Central America","Mexico","USA & Canada"),
                          ordered = TRUE),
-         group = str_to_title(group),
          list = ifelse(list == "rl","Red List","Watch List"))
 
 
