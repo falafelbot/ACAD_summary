@@ -281,21 +281,90 @@ print(sub2[["Forests"]])
 print(all3)
 dev.off()
 
-
-
-pdf("figures/primary_nonbreeding_habitat_summary.pdf",
-    width = 8.5,
-    height = 11)
-
-print(all2)
-print(sub)
-dev.off()
+# 
+# 
+# pdf("figures/primary_nonbreeding_habitat_summary.pdf",
+#     width = 8.5,
+#     height = 11)
+# 
+# print(all2)
+# print(sub)
+# dev.off()
 
 # ACAD vs IUCN ----------------------------------------------------------
 
 
 # plotting the % of species listed on watchlist vs IUCN
 #
+wl_levls <- levels(acad$continental_importance)
 
+watch_red <- acad %>% 
+  select(common_name,group,canada,usa,mexico,c_america,
+         continental_importance,iucn_red_list_2023) %>% 
+  rowwise() %>% 
+  mutate(wl = ifelse(continental_importance %in% 
+                       wl_levls[-c(1:2)],
+                     "listed",NA),
+         rl = ifelse(iucn_red_list_2023 %in% c("VU","EN","CR","EW","CR (PE)"),
+                     "listed",NA),
+         usa_canada = ifelse(canada == 1 | usa == 1,
+                             1,NA),
+         mexico = ifelse(mexico == 1,1,NA),
+         c_america = ifelse(c_america == 1,
+                            1,NA)) %>% 
+  select(-c(canada,usa,continental_importance,iucn_red_list_2023)) %>% 
+  pivot_longer(cols = c(usa_canada,mexico,c_america),
+               names_to = "region",
+               values_drop_na = TRUE) %>% 
+  select(-value) %>% 
+  pivot_longer(cols = c(wl,rl),
+               values_to = "listed",
+               names_to = "list") 
+
+n_by_reg <- watch_red %>%
+  select(region,common_name) %>% 
+  distinct() %>% 
+  group_by(region) %>% 
+  summarise(n_region = n())
+
+
+wlrl_data <- watch_red %>%
+  group_by(region,group,list) %>% 
+  summarise(n_group = n(),
+            n_listed = length(which(!is.na(listed)))) %>% 
+  left_join(n_by_reg) %>% 
+  mutate(p_listed = 100*(n_listed/n_region),
+         Region = factor(region,levels = c("c_america","mexico","usa_canada"),
+                         labels = c("Central America","Mexico","USA & Canada"),
+                         ordered = TRUE),
+         group = str_to_title(group),
+         list = ifelse(list == "rl","Red List","Watch List"))
+
+
+wlrl <- ggplot(data = wlrl_data,
+               aes(x = list,fill = group,y = p_listed),
+               na.rm = TRUE)+
+  geom_bar(stat = "identity")+
+  scale_y_continuous(name = "Percent of species listed",
+                     breaks = seq(0,50,by = 10),
+                     labels = ~paste0(.x,"%"),
+                     limits = c(0,50))+
+  scale_x_discrete(name = "")+
+  scale_fill_scico_d(direction = -1,
+                     begin = 0,
+                     end = 0.67,
+                     #palette = "oslo",
+                     name = "Bird Group")+
+  facet_wrap(vars(Region))+
+  theme_bw()
+
+wlrl
+
+pdf("figures/listing_comparison.pdf",
+    width = 7,
+    height = 4)
+
+wlrl
+dev.off()
 
 
