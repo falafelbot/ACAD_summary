@@ -8,6 +8,7 @@ library(colorscience)
 library(RColorBrewer)
 library(ggstats)
 library(scico)
+library(patchwork)
 # install.packages("devtools")
 # devtools::install_github("thomasp85/scico")
 # ACAD globals ------------------------------------------------------------
@@ -39,6 +40,10 @@ acad <- acad1 %>%
          
          primary_nonbreeding_habitat_sub = str_trim(str_extract(primary_nonbreeding_habitat,
                                                              pattern = "(?<=\\:).+")),
+         primary_nonbreeding_habitat_sub = ifelse(grepl("eneralist",primary_nonbreeding_habitat_sub),
+                                                  "Generalist",primary_nonbreeding_habitat_sub),
+         primary_breeding_habitat_sub = ifelse(grepl("eneralist",primary_breeding_habitat_sub),
+                                                  "Generalist",primary_breeding_habitat_sub),
          status = continental_importance,
          status = ifelse(grepl(continental_importance,pattern = "\\;"),
                          str_extract(status, pattern = ".+(?=\\;)"),
@@ -62,9 +67,9 @@ acad <- acad1 %>%
                          ordered = TRUE),
          continental_importance = status,
          group = factor(group,levels = c("landbird","shorebird",
-                                         "waterfowl","waterbird"),
+                                         "waterbird","waterfowl"),
                         labels = c("Landbirds","Shorebirds",
-                                   "Waterfowl","Waterbirds"),
+                                   "Waterbirds","Waterfowl"),
                         ordered = TRUE)
          
   )
@@ -98,7 +103,7 @@ acad <- acad %>%
 # names(colset2) <- col_names
 
 colset2 <- rev(scico(10, palette = 'romaO'))[c(3,5,6,7,8,9)]
-names(colset2) <- col_names
+names(colset2) <- levels(acad$status)
 
 # # comparable palette from color brewer
 # colset2 <- rev(brewer.pal(11,"RdYlBu"))[c(1:5,6,7,7,8,8,9,10,10,11,11,11,11)]
@@ -120,7 +125,9 @@ ft_mean <- function(x,thresh = 13){
 histo_function <- function(df = acad,
                grp = "primary_breeding_habitat_major",
                sub_grp = NULL,
-               scaling = "fixed"){
+               scaling = "fixed",
+               ylabl = "Percent of Species",
+               ylimu = 0.4){
   
 
   if(is.null(sub_grp)){
@@ -136,7 +143,7 @@ histo_function <- function(df = acad,
                       ordered = TRUE)) 
   
   titl <- str_to_title(str_replace_all(grp,pattern = "_",replacement = " "))
-  
+  titl <- str_replace(titl, pattern = " Major", replacement = "")
   }else{
     df[,"group_maj"] <- df[,grp]
     df[,"group_sub"] <- df[,sub_grp]
@@ -149,6 +156,10 @@ histo_function <- function(df = acad,
              ccs_max = factor(ccs_max,
                               levels = as.character(4:20),
                               ordered = TRUE))
+    
+    titl <- str_to_title(str_replace_all(grp,pattern = "_",replacement = " "))
+    titl <- str_replace(titl, pattern = " Major", replacement = "")
+    
   }
   
   dfs <- dfs %>% 
@@ -162,7 +173,7 @@ histo_function <- function(df = acad,
     
     dfs <- dfs %>% 
       left_join(.,nsp,by = "group_maj") %>% 
-      mutate(group_maj = paste0(group_maj,"(",nsps,")"),
+      mutate(group_maj = paste0(group_maj," (",nsps,")"),
              group_maj = fct_reorder(.f = group_maj,
                                      .x = ccs_max,
                                      .fun = ft_mean))
@@ -177,11 +188,13 @@ histo_function <- function(df = acad,
     # geom_errorbar(aes(ymin = base,ymax = n),
     #               width = 0,
     #               linewidth = 10)+
-    scale_y_continuous(labels = scales::percent) +
+    scale_y_continuous(breaks = c(0,0.2,0.4),labels = scales::percent,
+                       limits = c(0,ylimu)) +
     geom_bar(stat = "prop",
              width = 1)+
     scale_discrete_manual(aesthetics = c("colour","fill"),
-                          values = colset2)+
+                          values = colset2,
+                          name = "Continental Importance")+
     facet_wrap(facets = vars(group_maj),
                ncol = 1,
                scales = scaling,
@@ -189,8 +202,10 @@ histo_function <- function(df = acad,
     theme_minimal()+
     xlim(levels(dfs$ccs_max))+
     labs(title = titl)+
-    ylab("Percent of Species")+
+    ylab(ylabl)+
+    xlab("Continental Combined Score")+
     theme(legend.position = "right",
+          text = element_text(size = 12),
           strip.text = element_text(size = 12),
           panel.spacing.x=unit(0, "lines"))
   
@@ -214,14 +229,14 @@ histo_function <- function(df = acad,
       
       dfs1 <- dfs1 %>% 
         left_join(.,nsp,by = "group_sub") %>% 
-        mutate(group_sub = paste0(group_sub,"(",nsps,")"),
+        mutate(group_sub = paste0(group_sub," (",nsps,")"),
                group_sub = fct_reorder(.f = group_sub,
                                        .x = ccs_max,
                                        .fun = ft_mean))
       
       
       
-      titl <- paste(jj)
+      titl1 <- paste(jj,titl)
       high1[[jj]] <- ggplot(data = dfs1,
                             aes(y = after_stat(prop),
                                 x = ccs_max,
@@ -232,20 +247,24 @@ histo_function <- function(df = acad,
         # geom_errorbar(aes(ymin = base,ymax = n),
         #               width = 0,
         #               linewidth = 10)+
-        scale_y_continuous(labels = scales::percent) +
+        scale_y_continuous(breaks = c(0,0.2,0.4),labels = scales::percent,
+                           limits = c(0,ylimu)) +
         geom_bar(stat = "prop",
                  width = 1)+
         scale_discrete_manual(aesthetics = c("colour","fill"),
-                              values = colset2)+
+                              values = colset2,
+                              name = "Continental Importance")+
         facet_wrap(facets = vars(group_sub),
                    ncol = 1,
                    scales = scaling,
                    strip.position = "top")+
         theme_minimal()+
         xlim(levels(dfs1$ccs_max))+
-        labs(title = titl)+
-        ylab("Number of Species")+
+        labs(title = titl1)+
+        ylab(ylabl)+
+        xlab("Continental Combined Score")+
         theme(legend.position = "right",
+              text = element_text(size = 12),
               strip.text = element_text(size = 12),
               panel.spacing.x=unit(0, "lines"))
       
@@ -261,6 +280,7 @@ histo_function <- function(df = acad,
 
 
 all <- histo_function()
+
 png("primary_breeding_habitat_ccsmax_summary.png",
     width = 15,
     height = 30,
@@ -269,18 +289,41 @@ png("primary_breeding_habitat_ccsmax_summary.png",
 print(all)
 dev.off()
 
-sub <- histo_function(sub_grp = "primary_breeding_habitat_sub")
-all2 <- histo_function(grp = "primary_nonbreeding_habitat_major")
+all2 <- histo_function(grp = "primary_nonbreeding_habitat_major",
+                       ylabl = "")
 
+
+
+habitats <- all + all2 + plot_layout(guides = "collect")
+pdf("figures/Habitat_summaries.pdf",
+    height = 7,
+    width = 11)
+print(habitats)
+dev.off()
+
+sub <- histo_function(sub_grp = "primary_breeding_habitat_sub",
+                      ylimu = 0.4)
 sub2 <- histo_function(grp = "primary_nonbreeding_habitat_major",
-                      sub_grp = "primary_nonbreeding_habitat_sub")
+                       sub_grp = "primary_nonbreeding_habitat_sub",
+                       ylabl = "",
+                       ylimu = 0.4)
+
+
+forests <- sub[["Forests"]] + sub2[["Forests"]] + plot_layout(guides = "collect")
+pdf("figures/Forest_summaries.pdf",
+    height = 7,
+    width = 11)
+print(forests)
+dev.off()
+
+
 
 all3 <- histo_function(grp = "group")
 
 
 pdf("figures/Summary_of_large_groups.pdf",
     width = 8.5,
-    height = 11)
+    height = 9)
 
 print(all)
 print(sub[["Forests"]])
@@ -342,8 +385,8 @@ wlrl_data <- watch_red %>%
             n_listed = length(which(!is.na(listed)))) %>% 
   left_join(n_by_reg) %>% 
   mutate(p_listed = 100*(n_listed/n_region),
-         Region = factor(region,levels = c("c_america","mexico","usa_canada"),
-                         labels = c("Central America","Mexico","USA & Canada"),
+         Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada","Mexico","Central America"),
                          ordered = TRUE),
          list = ifelse(list == "rl","Red List","Watch List"))
 
@@ -355,7 +398,7 @@ wlrl <- ggplot(data = wlrl_data,
   scale_y_continuous(name = "Percent of species listed",
                      breaks = seq(0,50,by = 10),
                      labels = ~paste0(.x,"%"),
-                     limits = c(0,50))+
+                     limits = c(0,45))+
   scale_x_discrete(name = "")+
   scale_fill_scico_d(direction = -1,
                      begin = 0,
@@ -363,7 +406,8 @@ wlrl <- ggplot(data = wlrl_data,
                      #palette = "oslo",
                      name = "Bird Group")+
   facet_wrap(vars(Region))+
-  theme_bw()
+  theme_bw()+
+  theme(text = element_text(size = 12))
 
 wlrl
 
