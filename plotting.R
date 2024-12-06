@@ -349,29 +349,87 @@ dev.off()
 #
 wl_levls <- levels(acad$continental_importance)
 
+iucn_levels <- data.frame(iucn_red_list_2023 = c("EW",
+                                                 "CR (PE)",
+                                                 "CR",
+                                                 "EN",
+                                                 "VU",
+                                                 "NT"),
+                          iucn = c("Extinct in the Wild",
+                                   "Critically Endangered or Possibly Extinct",
+                                   "Critically Endangered or Possibly Extinct",
+                                   "Endangered",
+                                   "Vulnerable",
+                                   "Near Threatened"))
+rl_levls <- unique(iucn_levels$iucn)
+
+
+all_levels <- data.frame(listing = factor(c("Common Bird in Steep Decline",
+                                    "Near Threatened",
+                                    "Yellow Watch List",
+                                    "Yellow Watch List/Tipping-Point",
+                                    "Vulnerable",
+                                    "Orange Watch List/Tipping-Point",
+                                    "Endangered",
+                                    "Red Watch List/Tipping-Point",
+                                    "Critically Endangered or Possibly Extinct",
+                                    "Extinct in the Wild"),
+                                    levels = c("Common Bird in Steep Decline",
+                                               "Near Threatened",
+                                               "Yellow Watch List",
+                                               "Yellow Watch List/Tipping-Point",
+                                               "Vulnerable",
+                                               "Orange Watch List/Tipping-Point",
+                                               "Endangered",
+                                               "Red Watch List/Tipping-Point",
+                                               "Critically Endangered or Possibly Extinct",
+                                               "Extinct in the Wild"),
+                                    ordered = TRUE))
+
+colset3 <- rev(scico(10, palette = 'romaO'))[c(5,6,6,7,7,8,9,9,10)]
+colset3 <- c(colset3,"#000000")
+
+names(colset3) <- levels(all_levels$listing)
+
+## combine levels into a single column with manual colour palette
+## 
+## 
+## 
+## 
+
+
 watch_red <- acad %>% 
-  select(common_name,group,canada,usa,mexico,c_america,
+  select(common_name,canada,usa,mexico,c_america,
          continental_importance,iucn_red_list_2023) %>% 
+  left_join(iucn_levels,by = "iucn_red_list_2023") %>% 
   rowwise() %>% 
   mutate(wl = ifelse(continental_importance %in% 
-                       wl_levls[-c(1:2)],
+                       all_levels$listing,
                      "listed",NA),
-         rl = ifelse(iucn_red_list_2023 %in% c("VU","EN","CR","EW","CR (PE)"),
+         rl = ifelse(iucn_red_list_2023 %in% c("VU","EN","CR","EW","CR (PE)","NT"),
                      "listed",NA),
          usa_canada = ifelse(canada == 1 | usa == 1,
                              1,NA),
          mexico = ifelse(mexico == 1,1,NA),
          c_america = ifelse(c_america == 1,
-                            1,NA)) %>% 
-  select(-c(canada,usa,continental_importance,iucn_red_list_2023)) %>% 
+                            1,NA),
+         continental_importance = factor(continental_importance,
+                                         levels = levels(all_levels$listing),
+                                         ordered = TRUE),
+         iucn = factor(iucn,
+                       levels = levels(all_levels$listing),
+                       ordered = TRUE)) %>% 
+  select(-c(canada,usa,iucn_red_list_2023)) %>% 
   pivot_longer(cols = c(usa_canada,mexico,c_america),
                names_to = "region",
                values_drop_na = TRUE) %>% 
-  select(-value) %>% 
-  pivot_longer(cols = c(wl,rl),
+  #filter(!is.na(rl) | !is.na(wl)) %>% 
+  select(-c(value,wl,rl)) %>% 
+  pivot_longer(cols = c(iucn,continental_importance),
                values_to = "listed",
                names_to = "list") 
 
+#total number of species included in the region
 n_by_reg <- watch_red %>%
   select(region,common_name) %>% 
   distinct() %>% 
@@ -380,40 +438,83 @@ n_by_reg <- watch_red %>%
 
 
 wlrl_data <- watch_red %>%
-  group_by(region,group,list) %>% 
-  summarise(n_group = n(),
-            n_listed = length(which(!is.na(listed)))) %>% 
+  group_by(region,list,listed) %>% 
+  summarise(n_listed = n()) %>% 
   left_join(n_by_reg) %>% 
   mutate(p_listed = 100*(n_listed/n_region),
          Region = factor(region,levels = c("usa_canada","mexico","c_america"),
                          labels = c("USA & Canada","Mexico","Central America"),
                          ordered = TRUE),
-         list = ifelse(list == "rl","Red List","Watch List"))
+         list = ifelse(list == "iucn","IUCN","ACAD")) %>% 
+  filter(!is.na(listed))
+
+wlrl_data_iucn <- wlrl_data %>% 
+  filter(list == "IUCN")
+
+wlrl_data_acad <- wlrl_data %>% 
+  filter(list == "ACAD")
 
 
-wlrl <- ggplot(data = wlrl_data,
-               aes(x = list,fill = group,y = p_listed),
+wlrl_iucn <- ggplot(data = wlrl_data_iucn,
+               aes(x = list,fill = listed,y = p_listed),
                na.rm = TRUE)+
   geom_bar(stat = "identity")+
   scale_y_continuous(name = "Percent of species listed",
-                     breaks = seq(0,50,by = 10),
+                     breaks = seq(0,50,by = 20),
                      labels = ~paste0(.x,"%"),
-                     limits = c(0,45))+
+                     limits = c(0,50))+
   scale_x_discrete(name = "")+
-  scale_fill_scico_d(direction = -1,
-                     begin = 0,
-                     end = 0.67,
-                     #palette = "oslo",
-                     name = "Bird Group")+
-  facet_wrap(vars(Region))+
+  scale_discrete_manual(aesthetics = c("colour","fill"),
+                        values = colset3,
+                        name = "IUCN Listing")+
+  facet_wrap(vars(Region), ncol = 1,
+             strip.position = "top")+
   theme_bw()+
-  theme(text = element_text(size = 12))
+  theme(text = element_text(size = 12),
+        legend.position = "top",
+        legend.direction = "vertical",
+        legend.title = element_text(size = 7),
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(3,units = "mm"),
+        strip.text = element_text(size = 7),
+        axis.ticks.length.x = unit(0.1,units = "mm"),
+        axis.text.y = element_text(size = 6))
 
-wlrl
+wlrl_iucn
 
+
+wlrl_acad <- ggplot(data = wlrl_data_acad,
+                    aes(x = list,fill = listed,y = p_listed),
+                    na.rm = TRUE)+
+  geom_bar(stat = "identity")+
+  scale_y_continuous(name = "",
+                     breaks = seq(0,50,by = 20),
+                     #minor_breaks = seq(0,50,by = 10),
+                     labels = ~paste0(.x,"%"),
+                     limits = c(0,50))+
+  scale_x_discrete(name = "")+
+  scale_discrete_manual(aesthetics = c("colour","fill"),
+                        values = colset3,
+                        name = "ACAD Listing")+
+  facet_wrap(vars(Region), ncol = 1,
+             strip.position = "top")+
+  theme_bw()+
+  theme(text = element_text(size = 12),
+        legend.position = "top",
+        legend.direction = "vertical",
+        legend.title = element_text(size = 7),
+        legend.text = element_text(size = 6),
+        legend.key.size = unit(3,units = "mm"),
+        strip.text = element_text(size = 7),
+        axis.ticks.length.x = unit(0.1,units = "mm"),
+        axis.text.y = element_text(size = 6))
+
+wlrl_acad
+
+wlrl <- wlrl_iucn + wlrl_acad
 pdf("figures/listing_comparison.pdf",
-    width = 7,
-    height = 4)
+    width = 4,
+    height = 7)
 
 wlrl
 dev.off()
