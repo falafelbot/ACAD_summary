@@ -80,6 +80,7 @@ tst <- acad %>%
 acad <- acad %>% 
   filter(!is.na(ccs_max))
 
+saveRDS(acad,"data/cleaned_acad_global_2024_05_23.rds")
 # palettes ----------------------------------------------------------------
 
 ### original palette used in 2016
@@ -347,6 +348,8 @@ dev.off()
 
 # plotting the % of species listed on watchlist vs IUCN
 #
+
+
 wl_levls <- levels(acad$continental_importance)
 
 iucn_levels <- data.frame(iucn_red_list_2023 = c("EW",
@@ -355,16 +358,16 @@ iucn_levels <- data.frame(iucn_red_list_2023 = c("EW",
                                                  "EN",
                                                  "VU",
                                                  "NT"),
-                          iucn = c("Extinct in the Wild",
-                                   "Critically Endangered or Possibly Extinct",
-                                   "Critically Endangered or Possibly Extinct",
+                          iucn = str_wrap( width = 25, exdent = 2,c("Extinct in the Wild",
+                                   "Critically Endangered/Possibly Extinct",
+                                   "Critically Endangered/Possibly Extinct",
                                    "Endangered",
                                    "Vulnerable",
-                                   "Near Threatened"))
+                                   "Near Threatened")))
 rl_levls <- unique(iucn_levels$iucn)
 
 
-all_levels <- data.frame(listing = factor(c("Common Bird in Steep Decline",
+all_levels <- data.frame(listing = factor(str_wrap( width = 25, exdent = 2,c("Common Bird in Steep Decline",
                                     "Near Threatened",
                                     "Yellow Watch List",
                                     "Yellow Watch List/Tipping-Point",
@@ -372,9 +375,9 @@ all_levels <- data.frame(listing = factor(c("Common Bird in Steep Decline",
                                     "Orange Watch List/Tipping-Point",
                                     "Endangered",
                                     "Red Watch List/Tipping-Point",
-                                    "Critically Endangered or Possibly Extinct",
-                                    "Extinct in the Wild"),
-                                    levels = c("Common Bird in Steep Decline",
+                                    "Critically Endangered/Possibly Extinct",
+                                    "Extinct in the Wild")),
+                                    levels = str_wrap( width = 25, exdent = 2,c("Common Bird in Steep Decline",
                                                "Near Threatened",
                                                "Yellow Watch List",
                                                "Yellow Watch List/Tipping-Point",
@@ -382,11 +385,11 @@ all_levels <- data.frame(listing = factor(c("Common Bird in Steep Decline",
                                                "Orange Watch List/Tipping-Point",
                                                "Endangered",
                                                "Red Watch List/Tipping-Point",
-                                               "Critically Endangered or Possibly Extinct",
-                                               "Extinct in the Wild"),
+                                               "Critically Endangered/Possibly Extinct",
+                                               "Extinct in the Wild")),
                                     ordered = TRUE))
 
-colset3 <- rev(scico(10, palette = 'romaO'))[c(5,6,6,7,7,8,9,9,10)]
+colset3 <- rev(scico(10, palette = 'romaO'))[c(5,5,6,7,8,8,9,9,10)]
 colset3 <- c(colset3,"#000000")
 
 names(colset3) <- levels(all_levels$listing)
@@ -413,7 +416,7 @@ watch_red <- acad %>%
          mexico = ifelse(mexico == 1,1,NA),
          c_america = ifelse(c_america == 1,
                             1,NA),
-         continental_importance = factor(continental_importance,
+         continental_importance = factor(str_wrap(width = 25,exdent = 2,continental_importance),
                                          levels = levels(all_levels$listing),
                                          ordered = TRUE),
          iucn = factor(iucn,
@@ -458,7 +461,7 @@ wlrl_data_acad <- wlrl_data %>%
 wlrl_iucn <- ggplot(data = wlrl_data_iucn,
                aes(x = list,fill = listed,y = p_listed),
                na.rm = TRUE)+
-  geom_bar(stat = "identity")+
+  geom_bar(stat = "identity", width = 0.5)+
   scale_y_continuous(name = "Percent of species listed",
                      breaks = seq(0,50,by = 20),
                      labels = ~paste0(.x,"%"),
@@ -474,11 +477,19 @@ wlrl_iucn <- ggplot(data = wlrl_data_iucn,
         legend.position = "top",
         legend.direction = "vertical",
         legend.title = element_text(size = 7),
-        legend.text = element_text(size = 6),
+        legend.text = element_text(size = 7),
+        legend.spacing.x = unit(1,units = "mm"), 
         legend.key.size = unit(3,units = "mm"),
+        legend.key.spacing.x = unit(0.1, units = "mm"),
+        legend.box.just = "left",
         strip.text = element_text(size = 7),
         axis.ticks.length.x = unit(0.1,units = "mm"),
-        axis.text.y = element_text(size = 6))
+        axis.text.y = element_text(size = 7),
+        panel.spacing.x = unit(0.1,units = "mm"),
+        plot.margin = margin(t = 0,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0))
 
 wlrl_iucn
 
@@ -486,7 +497,7 @@ wlrl_iucn
 wlrl_acad <- ggplot(data = wlrl_data_acad,
                     aes(x = list,fill = listed,y = p_listed),
                     na.rm = TRUE)+
-  geom_bar(stat = "identity")+
+  geom_bar(stat = "identity",width = 0.5)+
   scale_y_continuous(name = "",
                      breaks = seq(0,50,by = 20),
                      #minor_breaks = seq(0,50,by = 10),
@@ -503,17 +514,24 @@ wlrl_acad <- ggplot(data = wlrl_data_acad,
         legend.position = "top",
         legend.direction = "vertical",
         legend.title = element_text(size = 7),
-        legend.text = element_text(size = 6),
+        legend.text = element_text(size = 7),
+        legend.spacing.x = unit(1,units = "mm"), 
         legend.key.size = unit(3,units = "mm"),
+        legend.key.spacing.x = unit(0.1, units = "mm"),
         strip.text = element_text(size = 7),
         axis.ticks.length.x = unit(0.1,units = "mm"),
-        axis.text.y = element_text(size = 6))
+        axis.text.y = element_text(size = 7),
+        panel.spacing.x = unit(0.1,units = "mm"),
+        plot.margin = margin(t = 0,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0))
 
 wlrl_acad
 
 wlrl <- wlrl_iucn + wlrl_acad
 pdf("figures/listing_comparison.pdf",
-    width = 4,
+    width = 3.5,
     height = 7)
 
 wlrl
