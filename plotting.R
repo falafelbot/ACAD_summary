@@ -9,6 +9,11 @@ library(RColorBrewer)
 library(ggstats)
 library(scico)
 library(patchwork)
+
+
+re_run_data_prep <- FALSE
+
+if(re_run_data_prep){
 # install.packages("devtools")
 # devtools::install_github("thomasp85/scico")
 # ACAD globals ------------------------------------------------------------
@@ -81,204 +86,22 @@ acad <- acad %>%
   filter(!is.na(ccs_max))
 
 saveRDS(acad,"data/cleaned_acad_global_2024_05_23.rds")
+
+}else{
+  acad <- readRDS("data/cleaned_acad_global_2024_05_23.rds")
+}
+
+
 # palettes ----------------------------------------------------------------
-
-### original palette used in 2016
-# cmykmat <- read.csv("data/ColourScale.csv")
-# cmykmat <- cmykmat/100
-# 
-# cmymat <- colorscience::CMYK2CMY(cmykmat)
-# rgbmat <- colorscience::CMY2RGB(cmymat)
-# 
-# colset <- colorscience::rgb(red = pmin(255,rgbmat[,"R"]),
-#               green = pmin(255,rgbmat[,"G"]),
-#               blue = pmin(255,rgbmat[,"B"]),
-#               maxColorValue = 255)
-
-# comparable palette from scico
- 
-# colset2 <- scico(11, palette = 'romaO')[c(1:5,6,7,7,8,8,9,10,10,11,11,11,11)]
-# names(colset2) <- as.character(4:20)
-# col_names <- levels(acad$continental_importance)
-# colset2 <- rev(scico(16, palette = 'romaO'))[c(4,8,10,11,13,15)]
-# names(colset2) <- col_names
 
 colset2 <- rev(scico(10, palette = 'romaO'))[c(3,5,6,7,8,9)]
 names(colset2) <- levels(acad$status)
 
-# # comparable palette from color brewer
-# colset2 <- rev(brewer.pal(11,"RdYlBu"))[c(1:5,6,7,7,8,8,9,10,10,11,11,11,11)]
-# names(colset2) <- as.character(4:20)
-# 
-# 
-# col_names <- levels(acad$continental_importance)
-# colset2 <- rev(brewer.pal(11,"RdYlBu"))[c(4,6,7,8,10,11)]
-# names(colset2) <- col_names
-
-ft_mean <- function(x,thresh = 13){
-  #return(length(which(as.integer(x)> thresh))/length(x))
-  return(mean(as.integer(x)))
-}
 
 
 # high level habitat summaries --------------------------------------------
-
-histo_function <- function(df = acad,
-               grp = "primary_breeding_habitat_major",
-               sub_grp = NULL,
-               scaling = "fixed",
-               ylabl = "Percent of Species",
-               ylimu = 0.4){
-  
-
-  if(is.null(sub_grp)){
-    df[,"group_maj"] <- df[,grp]
-  dfs <- df %>% 
-    # group_by(group_maj,ccs_max) %>% 
-    # summarise(n = n(),
-    #           .groups = "drop") %>% 
-    # ungroup() %>% 
-    mutate(base = 0,
-           ccs_max = factor(ccs_max,
-                      levels = as.character(4:20),
-                      ordered = TRUE)) 
-  
-  titl <- str_to_title(str_replace_all(grp,pattern = "_",replacement = " "))
-  titl <- str_replace(titl, pattern = " Major", replacement = "")
-  }else{
-    df[,"group_maj"] <- df[,grp]
-    df[,"group_sub"] <- df[,sub_grp]
-    dfs <- df %>% 
-      # group_by(group_maj,group_sub,ccs_max) %>% 
-      # summarise(n = n(),
-      #           .groups = "drop") %>% 
-      ungroup() %>% 
-      mutate(base = 0,
-             ccs_max = factor(ccs_max,
-                              levels = as.character(4:20),
-                              ordered = TRUE))
-    
-    titl <- str_to_title(str_replace_all(grp,pattern = "_",replacement = " "))
-    titl <- str_replace(titl, pattern = " Major", replacement = "")
-    
-  }
-  
-  dfs <- dfs %>% 
-    filter(!is.na(group_maj))
-  
-  if(is.null(sub_grp)){
-    
-    nsp <- dfs %>% 
-      group_by(group_maj) %>% 
-      summarise(nsps = n())
-    
-    dfs <- dfs %>% 
-      left_join(.,nsp,by = "group_maj") %>% 
-      mutate(group_maj = paste0(group_maj," (",nsps,")"),
-             group_maj = fct_reorder(.f = group_maj,
-                                     .x = ccs_max,
-                                     .fun = ft_mean))
-    
-  high1 <- ggplot(data = dfs,
-                  aes(y = after_stat(prop),
-                      x = ccs_max,
-                      by = 1,
-                      fill = continental_importance))+
-    geom_vline(xintercept = c(8.5-3,13.5-3),
-               colour = grey(0.8))+
-    # geom_errorbar(aes(ymin = base,ymax = n),
-    #               width = 0,
-    #               linewidth = 10)+
-    scale_y_continuous(breaks = c(0,0.2,0.4),labels = scales::percent,
-                       limits = c(0,ylimu)) +
-    geom_bar(stat = "prop",
-             width = 1)+
-    scale_discrete_manual(aesthetics = c("colour","fill"),
-                          values = colset2,
-                          name = "Continental Importance")+
-    facet_wrap(facets = vars(group_maj),
-               ncol = 1,
-               scales = scaling,
-               strip.position = "top")+
-    theme_minimal()+
-    xlim(levels(dfs$ccs_max))+
-    labs(title = titl)+
-    ylab(ylabl)+
-    xlab("Continental Combined Score")+
-    theme(legend.position = "right",
-          text = element_text(size = 12),
-          strip.text = element_text(size = 12),
-          panel.spacing.x=unit(0, "lines"))
-  
-  #high1
-  
-  }else{
-    
-    high1 <- vector("list",length(unique(df$group_maj)))
-    names(high1) <- unique(df$group_maj)
-    
-    if(any(is.na(names(high1)))){
-      high1 <- high1[-which( is.na(names(high1)))]
-    }
-    for(jj in names(high1)){
-      dfs1 <- dfs %>% 
-        filter(group_maj == jj)
-      
-      nsp <- dfs1 %>% 
-        group_by(group_sub) %>% 
-        summarise(nsps = n())
-      
-      dfs1 <- dfs1 %>% 
-        left_join(.,nsp,by = "group_sub") %>% 
-        mutate(group_sub = paste0(group_sub," (",nsps,")"),
-               group_sub = fct_reorder(.f = group_sub,
-                                       .x = ccs_max,
-                                       .fun = ft_mean))
-      
-      
-      
-      titl1 <- paste(jj,titl)
-      high1[[jj]] <- ggplot(data = dfs1,
-                            aes(y = after_stat(prop),
-                                x = ccs_max,
-                                by = 1,
-                                fill = continental_importance))+
-        geom_vline(xintercept = c(8.5-3,13.5-3),
-                   colour = grey(0.8))+
-        # geom_errorbar(aes(ymin = base,ymax = n),
-        #               width = 0,
-        #               linewidth = 10)+
-        scale_y_continuous(breaks = c(0,0.2,0.4),labels = scales::percent,
-                           limits = c(0,ylimu)) +
-        geom_bar(stat = "prop",
-                 width = 1)+
-        scale_discrete_manual(aesthetics = c("colour","fill"),
-                              values = colset2,
-                              name = "Continental Importance")+
-        facet_wrap(facets = vars(group_sub),
-                   ncol = 1,
-                   scales = scaling,
-                   strip.position = "top")+
-        theme_minimal()+
-        xlim(levels(dfs1$ccs_max))+
-        labs(title = titl1)+
-        ylab(ylabl)+
-        xlab("Continental Combined Score")+
-        theme(legend.position = "right",
-              text = element_text(size = 12),
-              strip.text = element_text(size = 12),
-              panel.spacing.x=unit(0, "lines"))
-      
-      
-    }
-    
-  }
-  
- return(high1)
-  
-}
-
-
+source("functions/histogram_function.R")
+# above is custom function histo_function()
 
 all <- histo_function()
 
@@ -319,7 +142,12 @@ dev.off()
 
 
 
-all3 <- histo_function(grp = "group")
+all3 <- histo_function(grp = "group",ylimu = 0.25)
+pdf("figures/Group_summaries.pdf",
+    height = 5,
+    width = 7)
+print(all3)
+dev.off()
 
 
 pdf("figures/Summary_of_large_groups.pdf",
@@ -334,16 +162,8 @@ print(all3)
 dev.off()
 
 # 
-# 
-# pdf("figures/primary_nonbreeding_habitat_summary.pdf",
-#     width = 8.5,
-#     height = 11)
-# 
-# print(all2)
-# print(sub)
-# dev.off()
 
-# ACAD vs IUCN ----------------------------------------------------------
+# Figure 4 ACAD vs IUCN ----------------------------------------------------------
 
 
 # plotting the % of species listed on watchlist vs IUCN
@@ -440,29 +260,43 @@ n_by_reg <- watch_red %>%
   summarise(n_region = n())
 
 
+
 wlrl_data <- watch_red %>%
   group_by(region,list,listed) %>% 
   summarise(n_listed = n()) %>% 
   left_join(n_by_reg) %>% 
   mutate(p_listed = 100*(n_listed/n_region),
          Region = factor(region,levels = c("usa_canada","mexico","c_america"),
-                         labels = c("USA & Canada","Mexico","Central America"),
+                         labels = c("USA & Canada (717)","Mexico (1060)","Central America (1160)"),
                          ordered = TRUE),
          list = ifelse(list == "iucn","IUCN","ACAD")) %>% 
   filter(!is.na(listed))
 
+#valuse of n_sp from this table used to add 
+#total number of species listed to facet labels
+n_by_listing <- wlrl_data %>% 
+  group_by(list,region) %>%
+  summarise(n_sp = sum(n_listed))
+  
+
 wlrl_data_iucn <- wlrl_data %>% 
-  filter(list == "IUCN")
+  filter(list == "IUCN") %>% 
+  mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada (92)","Mexico (118)","Central America (83)"),
+                         ordered = TRUE))
 
 wlrl_data_acad <- wlrl_data %>% 
-  filter(list == "ACAD")
+  filter(list == "ACAD")%>% 
+  mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada (233)","Mexico (458)","Central America (548)"),
+                         ordered = TRUE))
 
 
 wlrl_iucn <- ggplot(data = wlrl_data_iucn,
                aes(x = list,fill = listed,y = p_listed),
                na.rm = TRUE)+
   geom_bar(stat = "identity", width = 0.5)+
-  scale_y_continuous(name = "Percent of species listed",
+  scale_y_continuous(name = "Percent of breeding avifauna",
                      breaks = seq(0,50,by = 20),
                      labels = ~paste0(.x,"%"),
                      limits = c(0,50))+
@@ -471,7 +305,8 @@ wlrl_iucn <- ggplot(data = wlrl_data_iucn,
                         values = colset3,
                         name = "IUCN Listing")+
   facet_wrap(vars(Region), ncol = 1,
-             strip.position = "top")+
+             strip.position = "top",
+             labeller =  label_wrap_gen(16))+
   theme_bw()+
   theme(text = element_text(size = 12),
         legend.position = "top",
@@ -510,7 +345,8 @@ wlrl_acad <- ggplot(data = wlrl_data_acad,
                         values = colset3,
                         name = "ACAD Listing")+
   facet_wrap(vars(Region), ncol = 1,
-             strip.position = "top")+
+             strip.position = "top",
+             labeller =  label_wrap_gen(16))+
   theme_bw()+
   theme(text = element_text(size = 12),
         legend.position = "top",
@@ -538,7 +374,101 @@ pdf("figures/listing_comparison.pdf",
     width = 3.5,
     height = 7)
 
-wlrl
+print(wlrl)
 dev.off()
 
+
+
+
+
+# same but on count scale instead of % ------------------------------------
+
+
+
+
+
+wlrl_iucn <- ggplot(data = wlrl_data_iucn,
+                    aes(x = list,fill = listed,y = n_listed),
+                    na.rm = TRUE)+
+  geom_bar(stat = "identity", width = 0.5)+
+  scale_y_continuous(name = "Number of species",
+                     #breaks = seq(0,50,by = 20),
+                     #labels = ~paste0(.x,"%"),
+                     limits = c(0,600))+
+  scale_x_discrete(name = "")+
+  scale_discrete_manual(aesthetics = c("colour","fill"),
+                        values = colset3,
+                        name = "IUCN Listing")+
+  facet_wrap(vars(Region), ncol = 1,
+             strip.position = "top",
+             labeller =  label_wrap_gen(16))+
+  theme_bw()+
+  theme(text = element_text(size = 12),
+        legend.position = "top",
+        legend.location = "plot",
+        legend.justification = "left",
+        legend.direction = "vertical",
+        legend.title = element_text(size = 11),
+        legend.text = element_text(size = 9),
+        legend.spacing.x = unit(1,units = "mm"), 
+        legend.key.size = unit(3,units = "mm"),
+        legend.key.spacing.x = unit(0.1, units = "mm"),
+        legend.box.just = "left",
+        strip.text = element_text(size = 9),
+        axis.ticks.length.x = unit(0.1,units = "mm"),
+        axis.text.y = element_text(size = 9),
+        panel.spacing.x = unit(0.1,units = "mm"),
+        plot.margin = margin(t = 0,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0))
+
+wlrl_iucn
+
+
+wlrl_acad <- ggplot(data = wlrl_data_acad,
+                    aes(x = list,fill = listed,y = n_listed),
+                    na.rm = TRUE)+
+  geom_bar(stat = "identity",width = 0.5)+
+  scale_y_continuous(name = "",
+                     #breaks = seq(0,50,by = 20),
+                     #minor_breaks = seq(0,50,by = 10),
+                     #labels = ~paste0(.x,"%"),
+                     limits = c(0,600))+
+  scale_x_discrete(name = "")+
+  scale_discrete_manual(aesthetics = c("colour","fill"),
+                        values = colset3,
+                        name = "ACAD Listing")+
+  facet_wrap(vars(Region), ncol = 1,
+             strip.position = "top",
+             labeller =  label_wrap_gen(16))+
+  theme_bw()+
+  theme(text = element_text(size = 12),
+        legend.position = "top",
+        legend.location = "plot",
+        legend.justification = "left",
+        legend.direction = "vertical",
+        legend.title = element_text(size = 11),
+        legend.text = element_text(size = 9),
+        legend.spacing.x = unit(1,units = "mm"), 
+        legend.key.size = unit(3,units = "mm"),
+        legend.key.spacing.x = unit(0.1, units = "mm"),
+        strip.text = element_text(size = 9),
+        axis.ticks.length.x = unit(0.1,units = "mm"),
+        axis.text.y = element_text(size = 9),
+        panel.spacing.x = unit(0.1,units = "mm"),
+        plot.margin = margin(t = 0,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0))
+
+wlrl_acad
+
+wlrl <- wlrl_iucn + wlrl_acad
+pdf("figures/listing_comparison_count.pdf",
+    width = 3.5,
+    height = 7)
+
+wlrl
+dev.off()
 
