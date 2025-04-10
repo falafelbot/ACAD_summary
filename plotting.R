@@ -272,30 +272,44 @@ wlrl_data <- watch_red %>%
          list = ifelse(list == "iucn","IUCN","ACAD")) %>% 
   filter(!is.na(listed))
 
-#valuse of n_sp from this table used to add 
+#values of n_sp from this table used to add 
 #total number of species listed to facet labels
 n_by_listing <- wlrl_data %>% 
   group_by(list,region) %>%
-  summarise(n_sp = sum(n_listed))
+  summarise(n_sp = sum(n_listed),
+            p_listed = 100*sum(n_listed/n_region) + 5)
   
 
 wlrl_data_iucn <- wlrl_data %>% 
   filter(list == "IUCN") %>% 
   mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
-                         labels = c("USA & Canada (92)","Mexico (118)","Central America (83)"),
+                         labels = c("USA & Canada (717)","Mexico (1060)","Central America (1160)"),
                          ordered = TRUE))
 
 wlrl_data_acad <- wlrl_data %>% 
   filter(list == "ACAD")%>% 
   mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
-                         labels = c("USA & Canada (233)","Mexico (458)","Central America (548)"),
+                         labels = c("USA & Canada (717)","Mexico (1060)","Central America (1160)"),
+                         ordered = TRUE))
+
+n_iucn <- n_by_listing %>% 
+  filter(list == "IUCN") %>% 
+  mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada (717)","Mexico (1060)","Central America (1160)"),
+                         ordered = TRUE))
+
+n_acad <- n_by_listing %>% 
+  filter(list == "ACAD")%>% 
+  mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada (717)","Mexico (1060)","Central America (1160)"),
                          ordered = TRUE))
 
 
 wlrl_iucn <- ggplot(data = wlrl_data_iucn,
-               aes(x = list,fill = listed,y = p_listed),
+               aes(x = list,y = p_listed),
                na.rm = TRUE)+
-  geom_bar(stat = "identity", width = 0.5)+
+  geom_bar(aes(fill = listed), stat = "identity", width = 0.5)+
+  geom_text(data = n_iucn, aes(label = n_sp), x = 1) +
   scale_y_continuous(name = "Percent of breeding avifauna",
                      breaks = seq(0,50,by = 20),
                      labels = ~paste0(.x,"%"),
@@ -332,14 +346,15 @@ wlrl_iucn
 
 
 wlrl_acad <- ggplot(data = wlrl_data_acad,
-                    aes(x = list,fill = listed,y = p_listed),
+                    aes(x = list,y = p_listed),
                     na.rm = TRUE)+
-  geom_bar(stat = "identity",width = 0.5)+
+  geom_bar(aes(fill = listed), stat = "identity",width = 0.5)+
+  geom_text(data = n_acad, aes(label = n_sp), x = 1) +
   scale_y_continuous(name = "",
                      breaks = seq(0,50,by = 20),
                      #minor_breaks = seq(0,50,by = 10),
                      labels = ~paste0(.x,"%"),
-                     limits = c(0,50))+
+                     limits = c(0,55))+
   scale_x_discrete(name = "")+
   scale_discrete_manual(aesthetics = c("colour","fill"),
                         values = colset3,
@@ -370,14 +385,124 @@ wlrl_acad <- ggplot(data = wlrl_data_acad,
 wlrl_acad
 
 wlrl <- wlrl_iucn + wlrl_acad
-pdf("figures/listing_comparison.pdf",
+pdf("figures/listing_comparison1.pdf",
     width = 3.5,
     height = 7)
 
 print(wlrl)
 dev.off()
 
+# same but remove panel heading numbers (to be put in legend instead) % ---
+wlrl_data_iucn <- wlrl_data %>% 
+  filter(list == "IUCN") %>% 
+  mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada","Mexico","Central America"),
+                         ordered = TRUE))
 
+wlrl_data_acad <- wlrl_data %>% 
+  filter(list == "ACAD")%>% 
+  mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada","Mexico","Central America"),
+                         ordered = TRUE))
+
+n_iucn <- n_by_listing %>% 
+  filter(list == "IUCN") %>% 
+  mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada","Mexico","Central America"),
+                         ordered = TRUE))
+
+n_acad <- n_by_listing %>% 
+  filter(list == "ACAD")%>% 
+  mutate(Region = factor(region,levels = c("usa_canada","mexico","c_america"),
+                         labels = c("USA & Canada","Mexico","Central America"),
+                         ordered = TRUE))
+
+wlrl_iucn <- ggplot(data = wlrl_data_iucn,
+                    aes(x = list,y = p_listed),
+                    na.rm = TRUE)+
+  geom_bar(aes(fill = listed), stat = "identity", width = 0.5)+
+  geom_text(data = n_iucn, aes(label = n_sp), x = 1) +
+  scale_y_continuous(name = "Percent of breeding avifauna",
+                     breaks = seq(0,50,by = 20),
+                     labels = ~paste0(.x,"%"),
+                     limits = c(0,50))+
+  scale_x_discrete(name = "")+
+  scale_discrete_manual(aesthetics = c("colour","fill"),
+                        values = colset3,
+                        name = "IUCN Listing")+
+  facet_wrap(vars(Region), ncol = 1,
+             strip.position = "top",
+             labeller =  label_wrap_gen(16))+
+  theme_bw()+
+  theme(text = element_text(size = 12),
+        legend.position = "top",
+        legend.location = "plot",
+        legend.justification = "left",
+        legend.direction = "vertical",
+        legend.title = element_text(size = 11),
+        legend.text = element_text(size = 9),
+        legend.spacing.x = unit(1,units = "mm"), 
+        legend.key.size = unit(3,units = "mm"),
+        legend.key.spacing.x = unit(0.1, units = "mm"),
+        legend.box.just = "left",
+        strip.text = element_text(size = 9),
+        axis.ticks.length.x = unit(0.1,units = "mm"),
+        axis.text.y = element_text(size = 9),
+        panel.spacing.x = unit(0.1,units = "mm"),
+        plot.margin = margin(t = 0,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0))
+
+wlrl_iucn
+
+
+wlrl_acad <- ggplot(data = wlrl_data_acad,
+                    aes(x = list,y = p_listed),
+                    na.rm = TRUE)+
+  geom_bar(aes(fill = listed), stat = "identity",width = 0.5)+
+  geom_text(data = n_acad, aes(label = n_sp), x = 1) +
+  scale_y_continuous(name = "",
+                     breaks = seq(0,50,by = 20),
+                     #minor_breaks = seq(0,50,by = 10),
+                     labels = ~paste0(.x,"%"),
+                     limits = c(0,55))+
+  scale_x_discrete(name = "")+
+  scale_discrete_manual(aesthetics = c("colour","fill"),
+                        values = colset3,
+                        name = "ACAD Listing")+
+  facet_wrap(vars(Region), ncol = 1,
+             strip.position = "top",
+             labeller =  label_wrap_gen(16))+
+  theme_bw()+
+  theme(text = element_text(size = 12),
+        legend.position = "top",
+        legend.location = "plot",
+        legend.justification = "left",
+        legend.direction = "vertical",
+        legend.title = element_text(size = 11),
+        legend.text = element_text(size = 9),
+        legend.spacing.x = unit(1,units = "mm"), 
+        legend.key.size = unit(3,units = "mm"),
+        legend.key.spacing.x = unit(0.1, units = "mm"),
+        strip.text = element_text(size = 9),
+        axis.ticks.length.x = unit(0.1,units = "mm"),
+        axis.text.y = element_text(size = 9),
+        panel.spacing.x = unit(0.1,units = "mm"),
+        plot.margin = margin(t = 0,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0))
+
+wlrl_acad
+
+wlrl <- wlrl_iucn + wlrl_acad
+pdf("figures/listing_comparison2.pdf",
+    width = 3.5,
+    height = 7)
+
+print(wlrl)
+dev.off()
 
 
 
